@@ -1,41 +1,39 @@
 # !pip install cryptography
 # encryption.py
-from cryptography.fernet import Fernet
-import os
 
-KEY_FILE = "encryption_key.key"
+def encrypt_data(inputText,N=2, D=2):
+    reversed_text = inputText[::-1]
 
-# Generate or load encryption key
-if not os.path.exists(KEY_FILE):
-    with open(KEY_FILE, "wb") as key_file:
-        key = Fernet.generate_key()
-        key_file.write(key)
-else:
-    with open(KEY_FILE, "rb") as key_file:
-        key = key_file.read()
+    encrypted_text = ""
+    for char in reversed_text:
+        ascii_val = ord(char)
+        if (
+            34 <= ascii_val <= 126
+        ):  # Valid ASCII printable characters (except space and !)
+            new_ascii_val = ascii_val + (N * D)
+            if new_ascii_val > 126:
+                new_ascii_val = 34 + (new_ascii_val - 127)
+            elif new_ascii_val < 34:
+                new_ascii_val = 127 - (34 - new_ascii_val)
+            encrypted_text += chr(new_ascii_val)
+        else:
+            encrypted_text += char  # Keep invalid characters as they are
 
-cipher = Fernet(key)
+    return encrypted_text
 
-def encrypt_data(data: str) -> str:
-    """
-    Encrypts the given string data.
-    
-    Parameters:
-        data (str): The data to encrypt.
-    
-    Returns:
-        str: The encrypted data as a string.
-    """
-    return cipher.encrypt(data.encode()).decode()
 
-def decrypt_data(data: str) -> str:
-    """
-    Decrypts the given string data.
-    
-    Parameters:
-        data (str): The encrypted data to decrypt.
-    
-    Returns:
-        str: The decrypted data.
-    """
-    return cipher.decrypt(data.encode()).decode()
+def decrypt_data(encryptedText, N=2, D=2):
+    decrypted_text = ""
+    for char in encryptedText:
+        ascii_val = ord(char)
+        if 34 <= ascii_val <= 126:
+            new_ascii_val = ascii_val - (N * D)
+            if new_ascii_val > 126:
+                new_ascii_val = 34 + (new_ascii_val - 127)
+            elif new_ascii_val < 34:
+                new_ascii_val = 127 - (34 - new_ascii_val)
+            decrypted_text += chr(new_ascii_val)
+        else:
+            decrypted_text += char
+
+    return decrypted_text[::-1]
