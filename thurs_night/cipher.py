@@ -5,7 +5,7 @@ def encrypt(inputText, N, D):
     for char in reversed_text:
         ascii_val = ord(char)
         if (
-            34 <= ascii_val <= 126
+                34 <= ascii_val <= 126
         ):  # Valid ASCII printable characters (except space and !)
             new_ascii_val = ascii_val + (N * D)
             if new_ascii_val > 126:
