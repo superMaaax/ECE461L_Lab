@@ -21,3 +21,24 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Ignore virtual environment
+venv/
+
+# Byte-compiled files
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment variables
+.env
+
+# VS Code settings (if you use VS Code)
+.vscode/
+
+# Ignore any logs
+*.log
+
+# Ignore MacOS system files
+.DS_Store
+
