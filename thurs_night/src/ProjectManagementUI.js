@@ -42,15 +42,25 @@ function ProjectManagementUI() {
 
     // handle user amount input
     const handleUserInput = (hwSet, amount) => {
+        const { capacity, availability } = hwSets[hwSet];
+        const maxAllowed = Math.max(availability, capacity - availability);
         setUserAmounts(prev => ({
             ...prev,
-            [hwSet]: Math.max(0, Math.min(amount, hwSets[hwSet].availability))
+            [hwSet]: Math.max(0, Math.min(amount, maxAllowed))
         }));
     };
 
     // handle user checkout
-    const handleCheckout = async (hwSet) => {
+const handleCheckout = async (hwSet) => {
         try {
+            const { availability } = hwSets[hwSet];
+            const checkoutAmount = Math.min(userAmounts[hwSet], availability);
+
+            if (checkoutAmount <= 0) {
+                alert("No items available for checkout.");
+                return;
+            }
+
             const response = await fetch("/checkout", {
                 method: 'POST',
                 headers: {
@@ -58,22 +68,35 @@ function ProjectManagementUI() {
                 },
                 body: JSON.stringify({
                     hw_set: hwSet,
-                    qty: userAmounts[hwSet],
+                    qty: checkoutAmount,
                     projectID: 0
                 })
             });
             const data = await response.json();
             console.log(data.message);
+
             // Refresh hardware data and user amounts after checkout
             await fetchHardWareData();
             setUserAmounts(prev => ({...prev, [hwSet]: 0}));
+
+            alert(`Successfully checked out ${checkoutAmount} items.`);
         } catch (error) {
-            console.error("Error checking out hardware due to: ", error);
+            console.error("Error checking out hardware:", error);
+            alert('An error occurred during checkout. Please try again.');
         }
     }
 
     const handleCheckin = async (hwSet) => {
         try {
+            const { capacity, availability } = hwSets[hwSet];
+            const maxCheckin = capacity - availability;
+            const checkinAmount = Math.min(userAmounts[hwSet], maxCheckin);
+
+            if (checkinAmount <= 0) {
+                alert("No items to check in or all items already checked in.");
+                return;
+            }
+
             const response = await fetch('/checkin', {
                 method: 'POST',
                 headers: {
@@ -81,17 +104,21 @@ function ProjectManagementUI() {
                 },
                 body: JSON.stringify({
                     hw_set: hwSet,
-                    qty: userAmounts[hwSet],
+                    qty: checkinAmount,
                     projectID: 0,
                 }),
             });
             const data = await response.json();
             console.log(data.message);
+
             // Refresh hardware data and user amounts after checkin
             await fetchHardWareData();
             setUserAmounts(prev => ({...prev, [hwSet]: 0}));
+
+            alert(`Successfully checked in ${checkinAmount} items.`);
         } catch (error) {
             console.error('Error during checkin:', error);
+            alert('An error occurred during check-in. Please try again.');
         }
     };
 
@@ -123,7 +150,7 @@ function ProjectManagementUI() {
                             onChange={(e) => handleUserInput(hwSet, Number(e.target.value))}
                             className="amount-input"
                             min="0"
-                            max={availability}
+                            max={Math.max(availability, capacity - availability)}
                         />
                         <div className="button-group">
                             <button onClick={() => handleUserInput(hwSet, userAmounts[hwSet] + 1)}>+</button>
