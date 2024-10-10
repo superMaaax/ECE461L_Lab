@@ -71,6 +71,107 @@
   cursor: pointer;
 }
 
+.checkout-checkin-group{
+    display: flex;
+    gap: 0.5rem;
+}
+
+.checkout-checkin-group button {
+    flex: 1;
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.checkout-checkin-group button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.checkout-button {
+    background-color: #f87171;
+    color: white;
+}
+
+.checkout-button:hover:not(:disabled) {
+    background-color: #ef4444;
+}
+
+.checkin-button {
+    background-color: #34d399;
+    color: white;
+}
+
+.checkin-button:hover:not(:disabled) {
+    background-color: #10b981;
+}
+
+.login-container, .register-container {
+  max-width: 300px;
+  margin: 0 auto;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  margin-top: 50px;
+}
+
+.login-container h2, .register-container h2 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.login-container form, .register-container form {
+  display: flex;
+  flex-direction: column;
+}
+
+.login-container div, .register-container div {
+  margin-bottom: 15px;
+}
+
+.login-container label, .register-container label {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.login-container input, .register-container input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.login-container button, .register-container button {
+  background-color: #3b82f6;
+  color: white;
+  padding: 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.login-container button:hover, .register-container button:hover {
+  background-color: #2563eb;
+}
+
+.register-link {
+  margin-top: 15px;
+  text-align: center;
+}
+
+.register-link a {
+  color: #3b82f6;
+  text-decoration: none;
+}
+
+.register-link a:hover {
+  text-decoration: underline;
+}
+
+
+
 @media (max-width: 640px) {
   .hw-sets {
     grid-template-columns: 1fr;

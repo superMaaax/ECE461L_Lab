@@ -1,64 +1,33 @@
-import React, { useState } from 'react';
+import React, {useState, useEffect} from 'react';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import './App.css';
-
-function ProjectManagementUI() {
-  const [hwSet1Amount, setHwSet1Amount] = useState(0);
-  const [hwSet2Amount, setHwSet2Amount] = useState(0);
-
-  return (
-    <div className="container">
-      <div className="header">
-        <h1>User1</h1>
-        <button className="logout-button">LOG OUT</button>
-      </div>
-
-      <div className="create-project">
-        <button className="create-project-button">Create Project</button>
-      </div>
-
-      <div className="hw-sets">
-        <div className="hw-set-card">
-          <h3>HWSet1</h3>
-          <p>Capacity: 200</p>
-          <p>Available: 200</p>
-          <input
-            type="number"
-            value={hwSet1Amount}
-            onChange={(e) => setHwSet1Amount(Number(e.target.value))}
-            className="amount-input"
-          />
-          <div className="button-group">
-            <button onClick={() => setHwSet1Amount(hwSet1Amount + 1)}>+</button>
-            <button onClick={() => setHwSet1Amount(Math.max(0, hwSet1Amount - 1))}>-</button>
-          </div>
-        </div>
-
-        <div className="hw-set-card">
-          <h3>HWSet2</h3>
-          <p>Capacity: 200</p>
-          <p>Available: 200</p>
-          <input
-            type="number"
-            value={hwSet2Amount}
-            onChange={(e) => setHwSet2Amount(Number(e.target.value))}
-            className="amount-input"
-          />
-          <div className="button-group">
-            <button onClick={() => setHwSet2Amount(hwSet2Amount + 1)}>+</button>
-            <button onClick={() => setHwSet2Amount(Math.max(0, hwSet2Amount - 1))}>-</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+import ProjectManagementUI from "./ProjectManagementUI";
+import Login from "./Login";
+import Register from "./Registration";
 
 function App() {
-  return (
-    <div className="App">
-      <ProjectManagementUI />
-    </div>
-  );
+    const [message, setMessage] = useState('');
+
+    useEffect(() => {
+        // Fetch the welcome message from Flask backend
+        fetch('http://127.0.0.1:5000/')
+            .then(response => response.json())
+            .then(data => setMessage(data.message))
+            .catch(error => console.error('Error fetching welcome message:', error));
+    }, []);
+
+    return (
+        <Router>
+            <div className="App">
+                <Routes>
+                    <Route path="/login" element={<Login/>}/>
+                    <Route path="/register" element={<Register/>}/>
+                    <Route path="/dashboard" element={<ProjectManagementUI/>}/>
+                    <Route path="/" element={<Navigate replace to="/login"/>}/>
+                </Routes>
+            </div>
+        </Router>
+    );
 }
 
 export default App;
