@@ -1,2 +1,1 @@
-web: gunicorn app:app
-web: cd thurs_night && python app.py
+web: cd thurs_night && gunicorn app:app
