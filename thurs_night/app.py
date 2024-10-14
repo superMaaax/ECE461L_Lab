@@ -1,7 +1,6 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-import pymongo
-from pymongo import ssl_support
+from pymongo import MongoClient
 from cipher import encrypt, decrypt
 from hardwareSet import hardwareSet
 import os
@@ -24,9 +23,10 @@ def initialize_hardware():
 
 # Initialize MongoDB
 mongo_uri = os.environ.get("MONGO_URI")
+is_heroku = False
 
 try:
-    client = pymongo.MongoClient(mongo_uri)
+    client = MongoClient(mongo_uri)
     db = client["haas_app"]
     users_collection = db["users"]
     hardware_collection = db["hardware"]
@@ -48,14 +48,6 @@ def serve(path):
         return send_from_directory(app.static_folder, path)
     else:
         return send_from_directory(app.static_folder, 'index.html')
-
-
-# @app.route('/<path:path>', methods=["GET"])
-# def serve_static_files(path):
-#     if os.path.exists(os.path.join(app.static_folder, path)):
-#         return send_from_directory(app.static_folder, path)
-#     else:
-#         return send_from_directory(app.static_folder, 'index.html')
 
 
 # Hardware Status Endpoint
