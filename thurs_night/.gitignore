@@ -10,6 +10,7 @@
 
 # production
 #/build
+test_mongo.py
 
 # misc
 .DS_Store
