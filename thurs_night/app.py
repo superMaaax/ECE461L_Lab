@@ -1,12 +1,13 @@
-import os
-
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import pymongo
+from pymongo import ssl_support
 from cipher import encrypt, decrypt
 from hardwareSet import hardwareSet
+import os
 
-app = Flask(__name__, static_folder='build')
+
+app = Flask(__name__, static_folder='build', static_url_path='')
 CORS(app)
 
 
@@ -23,7 +24,7 @@ def initialize_hardware():
 # Initialize MongoDB
 mongo_uri = os.environ.get("MONGO_URI")
 try:
-    client = pymongo.MongoClient(mongo_uri)
+    client = pymongo.MongoClient(mongo_uri, ssl=True, ssl_cert_reqs=pymongo.ssl_support.CERT_NONE)
     db = client["haas_app"]
     users_collection = db["users"]
     hardware_collection = db["hardware"]
@@ -38,25 +39,21 @@ hardware_set_1.initialize_capacity(200)
 hardware_set_2.initialize_capacity(200)
 
 
-@app.route('/', methods=["GET"])
-def home():
-    return send_from_directory(app.static_folder, 'index.html')
-
-
-@app.route('/<path:path>', methods=["GET"])
-def serve_static_files(path):
-    if os.path.exists(os.path.join(app.static_folder, path)):
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve(path):
+    if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
         return send_from_directory(app.static_folder, path)
     else:
         return send_from_directory(app.static_folder, 'index.html')
 
 
-@app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
-def catch_all(path):
-    if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
-        return send_from_directory(app.static_folder, path)
-    return send_from_directory(app.static_folder, 'index.html')
+# @app.route('/<path:path>', methods=["GET"])
+# def serve_static_files(path):
+#     if os.path.exists(os.path.join(app.static_folder, path)):
+#         return send_from_directory(app.static_folder, path)
+#     else:
+#         return send_from_directory(app.static_folder, 'index.html')
 
 
 # Hardware Status Endpoint

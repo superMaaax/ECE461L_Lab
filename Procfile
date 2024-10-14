@@ -1,1 +1,1 @@
-web: cd thurs_night && gunicorn app:app
+web: gunicorn --chdir thurs_night app:app
