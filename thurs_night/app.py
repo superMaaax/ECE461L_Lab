@@ -21,7 +21,7 @@ def initialize_hardware():
 
 
 # Initialize MongoDB
-mongo_uri = "mongodb+srv://swadeepto:swelabthursnight@swe-lab-haas.gld42.mongodb.net/?retryWrites=true&w=majority&appName=swe-lab-haas"
+mongo_uri = os.environ.get("MONGO_URI")
 try:
     client = pymongo.MongoClient(mongo_uri)
     db = client["haas_app"]
@@ -49,6 +49,14 @@ def serve_static_files(path):
         return send_from_directory(app.static_folder, path)
     else:
         return send_from_directory(app.static_folder, 'index.html')
+
+
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def catch_all(path):
+    if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
+        return send_from_directory(app.static_folder, path)
+    return send_from_directory(app.static_folder, 'index.html')
 
 
 # Hardware Status Endpoint
