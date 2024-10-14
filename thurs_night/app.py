@@ -1,10 +1,12 @@
-from flask import Flask, request, jsonify
+import os
+
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import pymongo
 from cipher import encrypt, decrypt
 from hardwareSet import hardwareSet
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='build')
 CORS(app)
 
 
@@ -38,7 +40,15 @@ hardware_set_2.initialize_capacity(200)
 
 @app.route('/', methods=["GET"])
 def home():
-    return jsonify({"message": "Welcome to the HaaS App!"})
+    return send_from_directory(app.static_folder, 'index.html')
+
+
+@app.route('/<path:path>', methods=["GET"])
+def serve_static_files(path):
+    if os.path.exists(os.path.join(app.static_folder, path)):
+        return send_from_directory(app.static_folder, path)
+    else:
+        return send_from_directory(app.static_folder, 'index.html')
 
 
 # Hardware Status Endpoint
