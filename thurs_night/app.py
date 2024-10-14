@@ -5,7 +5,7 @@ from pymongo import ssl_support
 from cipher import encrypt, decrypt
 from hardwareSet import hardwareSet
 import os
-
+import logging
 
 app = Flask(__name__, static_folder='build', static_url_path='')
 CORS(app)
@@ -22,7 +22,8 @@ def initialize_hardware():
 
 
 # Initialize MongoDB
-mongo_uri = os.environ.get("MONGO_URI")
+mongo_uri = os.environ.get("MONGO_URI", "mongodb+srv://swadeepto:swelabthursnight@swe-lab-haas.gld42.mongodb.net"
+                                        "/?retryWrites=true&w=majority&appName=swe-lab-haas")
 try:
     client = pymongo.MongoClient(mongo_uri, ssl=True, ssl_cert_reqs=pymongo.ssl_support.CERT_NONE)
     db = client["haas_app"]
@@ -136,6 +137,26 @@ def checkin():
 
     return jsonify({"message": "Invalid request!"}), 400
 
+
+logging.basicConfig(level=logging.INFO)
+
+
+@app.errorhandler(404)
+def not_found(e):
+    logging.error(f"404 error: {request.url}")
+    return send_from_directory(app.static_folder, 'index.html')
+
+
+@app.errorhandler(500)
+def server_error(e):
+    logging.error(f"500 error: {str(e)}")
+    return jsonify(error="Internal server error"), 500
+
+
+print(f"Current working directory: {os.getcwd()}")
+print(f"Contents of current directory: {os.listdir('.')}")
+print(f"Static folder path: {app.static_folder}")
+print(f"Does index.html exist? {os.path.exists(os.path.join(app.static_folder, 'index.html'))}")
 
 if __name__ == "__main__":
     initialize_hardware()
