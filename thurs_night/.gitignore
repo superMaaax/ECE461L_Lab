@@ -9,7 +9,8 @@
 /coverage
 
 # production
-/build
+#/build
+test_mongo.py
 
 # misc
 .DS_Store

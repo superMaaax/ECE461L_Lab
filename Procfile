@@ -1,0 +1,1 @@
+web: gunicorn --chdir thurs_night app:app

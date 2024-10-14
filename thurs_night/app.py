@@ -1,10 +1,13 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-import pymongo
+from pymongo import MongoClient
 from cipher import encrypt, decrypt
 from hardwareSet import hardwareSet
+import os
+import logging
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='build', static_url_path='')
+logging.basicConfig(level=logging.INFO)
 CORS(app)
 
 
@@ -19,9 +22,11 @@ def initialize_hardware():
 
 
 # Initialize MongoDB
-mongo_uri = "mongodb+srv://swadeepto:swelabthursnight@swe-lab-haas.gld42.mongodb.net/?retryWrites=true&w=majority&appName=swe-lab-haas"
+mongo_uri = os.environ.get("MONGO_URI")
+is_heroku = False
+
 try:
-    client = pymongo.MongoClient(mongo_uri)
+    client = MongoClient(mongo_uri)
     db = client["haas_app"]
     users_collection = db["users"]
     hardware_collection = db["hardware"]
@@ -36,9 +41,13 @@ hardware_set_1.initialize_capacity(200)
 hardware_set_2.initialize_capacity(200)
 
 
-@app.route('/', methods=["GET"])
-def home():
-    return jsonify({"message": "Welcome to the HaaS App!"})
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve(path):
+    if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
+        return send_from_directory(app.static_folder, path)
+    else:
+        return send_from_directory(app.static_folder, 'index.html')
 
 
 # Hardware Status Endpoint
@@ -122,6 +131,13 @@ def checkin():
     return jsonify({"message": "Invalid request!"}), 400
 
 
+@app.errorhandler(500)
+def server_error(e):
+    logging.error(f"500 error: {str(e)}")
+    return jsonify(error="Internal server error"), 500
+
+
 if __name__ == "__main__":
     initialize_hardware()
-    app.run(debug=True, port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
