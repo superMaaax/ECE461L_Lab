@@ -24,7 +24,7 @@ def initialize_hardware():
 
 # Initialize MongoDB
 mongo_uri = "mongodb+srv://swadeepto:swelabthursnight@swe-lab-haas.gld42.mongodb.net/?retryWrites=true&w=majority&appName=swe-lab-haas"
-"
+
 try:
     client = pymongo.MongoClient(mongo_uri, ssl=True, ssl_cert_reqs=pymongo.ssl_support.CERT_NONE)
     db = client["haas_app"]
