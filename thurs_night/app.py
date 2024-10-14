@@ -26,7 +26,7 @@ def initialize_hardware():
 mongo_uri = os.environ.get("MONGO_URI")
 
 try:
-    client = pymongo.MongoClient(mongo_uri, ssl=True, ssl_cert_reqs=pymongo.ssl_support.CERT_NONE)
+    client = pymongo.MongoClient(mongo_uri)
     db = client["haas_app"]
     users_collection = db["users"]
     hardware_collection = db["hardware"]
