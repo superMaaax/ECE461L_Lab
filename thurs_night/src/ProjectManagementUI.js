@@ -215,21 +215,21 @@ function ProjectManagementUI() {
 
       <div className="container">
         <h2>Projects</h2>
-        {projects.map((project) => (
-          <div key={project.projectID} className="project-card">
-            <div className="project-header">
-              <h3>
-                Project Name: {project.name} (ID: {project.projectID})
-              </h3>
-              <p>Project Description: {project.description}</p>
-            </div>
-            <div className="hardware-section">
+        <div className="hw-sets">
+          {projects.map((project) => (
+            <div key={project.projectID} className="hw-set-card">
+              <div className="project-header">
+                <h3>
+                  Project Name: {project.name} (ID: {project.projectID})
+                </h3>
+                <p>Project Description: {project.description}</p>
+              </div>
               {project.hardwareSets.map((hwSet) => (
                 <div key={hwSet.name} className="hw-set">
-                  <p>
-                    {hwSet.name}: Available {hwSet.availability}/
-                    {hwSet.capacity}
-                  </p>
+                  <div className="hw-stats">
+                    <p>Capacity: {hwSet.capacity}</p>
+                    <p>Available: {hwSet.availability}</p>
+                  </div>
                   <div className="hw-actions">
                     <input
                       type="number"
@@ -237,30 +237,31 @@ function ProjectManagementUI() {
                       onChange={(e) =>
                         handleUserInput(hwSet.name, Number(e.target.value))
                       }
-                      placeholder="Enter qty"
                     />
-                    <button
-                      className="checkin-button"
-                      onClick={() =>
-                        handleCheckin(hwSet.name, project.projectID)
-                      }
-                    >
-                      Check In
-                    </button>
-                    <button
-                      className="checkout-button"
-                      onClick={() =>
-                        handleCheckout(hwSet.name, project.projectID)
-                      }
-                    >
-                      Check Out
-                    </button>
+                    <div className="checkout-checkin-group">
+                      <button
+                        className="checkout-button"
+                        onClick={() =>
+                          handleCheckout(hwSet.name, project.projectID)
+                        }
+                      >
+                        Checkout
+                      </button>
+                      <button
+                        className="checkin-button"
+                        onClick={() =>
+                          handleCheckin(hwSet.name, project.projectID)
+                        }
+                      >
+                        Check In
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );
