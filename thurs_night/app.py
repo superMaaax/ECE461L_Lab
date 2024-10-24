@@ -6,7 +6,7 @@ from hardwareSet import hardwareSet
 import os
 import logging
 
-app = Flask(__name__, static_folder='build', static_url_path='')
+app = Flask(__name__, static_folder="build", static_url_path="")
 logging.basicConfig(level=logging.INFO)
 CORS(app)
 
@@ -16,7 +16,7 @@ def initialize_hardware():
         hardware_collection.insert_many(
             [
                 {"name": "HWSet1", "capacity": 200, "availability": 200},
-                {"name": "HWSet2", "capacity": 200, "availability": 200}
+                {"name": "HWSet2", "capacity": 200, "availability": 200},
             ]
         )
 
@@ -30,6 +30,7 @@ try:
     db = client["haas_app"]
     users_collection = db["users"]
     hardware_collection = db["hardware"]
+    projects_collection = db["projects"]
     initialize_hardware()  # Call to populate initial data
 except Exception as e:
     print("Failed to connect to MongoDB:", e)
@@ -41,13 +42,13 @@ hardware_set_1.initialize_capacity(200)
 hardware_set_2.initialize_capacity(200)
 
 
-@app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
+@app.route("/", defaults={"path": ""})
+@app.route("/<path:path>")
 def serve(path):
     if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
         return send_from_directory(app.static_folder, path)
     else:
-        return send_from_directory(app.static_folder, 'index.html')
+        return send_from_directory(app.static_folder, "index.html")
 
 
 # Hardware Status Endpoint
@@ -78,30 +79,29 @@ def login():
     user = users_collection.find_one({"userid": userid, "password": password})
     if user:
         decrypted_userid = decrypt(user["userid"], N=3, D=1)
-        return jsonify({
-            "message": "Login successful",
-            "username": decrypted_userid
-        }), 200
+        return (
+            jsonify({"message": "Login successful", "username": decrypted_userid}),
+            200,
+        )
     else:
         return jsonify({"message": "Invalid credentials"}), 401
 
 
 # Hardware Checkout Endpoint
-@app.route('/checkout', methods=['POST'])
+@app.route("/checkout", methods=["POST"])
 def checkout():
     data = request.json
-    hw_set_name = data.get('hw_set')
-    qty = data.get('qty')
+    hw_set_name = data.get("hw_set")
+    qty = data.get("qty")
 
     if hw_set_name and qty:
         hardware_item = hardware_collection.find_one({"name": hw_set_name})
 
-        if hardware_item and hardware_item['availability'] >= qty:
+        if hardware_item and hardware_item["availability"] >= qty:
             # Update the availability
-            new_availability = hardware_item['availability'] - qty
+            new_availability = hardware_item["availability"] - qty
             hardware_collection.update_one(
-                {"name": hw_set_name},
-                {"$set": {"availability": new_availability}}
+                {"name": hw_set_name}, {"$set": {"availability": new_availability}}
             )
             return jsonify({"message": "Checked out successfully!"}), 200
         else:
@@ -110,25 +110,47 @@ def checkout():
     return jsonify({"message": "Invalid request!"}), 400
 
 
-@app.route('/checkin', methods=['POST'])
+@app.route("/checkin", methods=["POST"])
 def checkin():
     data = request.json
-    hw_set_name = data.get('hw_set')
-    qty = data.get('qty')
+    hw_set_name = data.get("hw_set")
+    qty = data.get("qty")
 
     if hw_set_name and qty:
         hardware_item = hardware_collection.find_one({"name": hw_set_name})
 
         if hardware_item:
             # Update the availability
-            new_availability = hardware_item['availability'] + qty
+            new_availability = hardware_item["availability"] + qty
             hardware_collection.update_one(
-                {"name": hw_set_name},
-                {"$set": {"availability": new_availability}}
+                {"name": hw_set_name}, {"$set": {"availability": new_availability}}
             )
             return jsonify({"message": "Checked in successfully!"}), 200
 
     return jsonify({"message": "Invalid request!"}), 400
+
+
+@app.route("/create-project", methods=["POST"])
+def create_project():
+    data = request.json
+    name = data.get("name")
+    description = data.get("description")
+    project_id = data.get("projectID")
+
+    # Basic validation
+    if not name or not project_id:
+        return jsonify({"message": "Name and Project ID are required"}), 400
+
+    # Check if the project already exists
+    existing_project = projects_collection.find_one({"projectID": project_id})
+    if existing_project:
+        return jsonify({"message": "Project with this ID already exists"}), 400
+
+    # Insert new project into MongoDB
+    new_project = {"name": name, "description": description, "projectID": project_id}
+    projects_collection.insert_one(new_project)
+
+    return jsonify({"message": "Project created successfully"}), 201
 
 
 @app.errorhandler(500)
@@ -140,4 +162,4 @@ def server_error(e):
 if __name__ == "__main__":
     initialize_hardware()
     port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host="0.0.0.0", port=port)
