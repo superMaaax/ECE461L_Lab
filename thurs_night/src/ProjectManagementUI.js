@@ -87,22 +87,31 @@ function ProjectManagementUI() {
   const location = useLocation();
   const username = location.state?.username || "User";
 
-  const handleUserInput = (hwSet, amount) => {
-    const hardwareSet = hwSets[hwSet] || { capacity: 0, availability: 0 }; // Fallback to default values if undefined
+  const handleUserInput = (hwSet, projectID, amount) => {
+    const key = `${projectID}-${hwSet}`;
+    const hardwareSet = hwSets[hwSet] || { capacity: 0, availability: 0 };
     const { capacity, availability } = hardwareSet;
     const maxAllowed = Math.max(availability, capacity - availability);
 
     setUserAmounts((prev) => ({
       ...prev,
-      [hwSet]: Math.max(0, Math.min(amount, maxAllowed)),
+      [key]: Math.max(0, Math.min(amount, maxAllowed)),
     }));
   };
 
   const handleCheckout = async (hwSet, projectID) => {
     try {
-      const { availability } = hwSets[hwSet];
-      const checkoutAmount = Math.min(userAmounts[hwSet], availability);
+      const project = projects.find((proj) => proj.projectID === projectID);
+      const hardwareSet = project.hardwareSets.find(
+        (set) => set.name === hwSet
+      );
+      const { availability } = hardwareSet; 
 
+      const checkoutAmount = Math.min(
+        userAmounts[`${projectID}-${hwSet}`],
+        availability
+      );
+      
       if (checkoutAmount <= 0) {
         alert("No items available for checkout.");
         return;
@@ -135,9 +144,17 @@ function ProjectManagementUI() {
 
   const handleCheckin = async (hwSet, projectID) => {
     try {
-      const { capacity, availability } = hwSets[hwSet];
+      const project = projects.find((proj) => proj.projectID === projectID);
+      const hardwareSet = project.hardwareSets.find(
+        (set) => set.name === hwSet
+      );
+      const { capacity, availability } = hardwareSet;
+
       const maxCheckin = capacity - availability;
-      const checkinAmount = Math.min(userAmounts[hwSet], maxCheckin);
+      const checkinAmount = Math.min(
+        userAmounts[`${projectID}-${hwSet}`],
+        maxCheckin
+      );
 
       if (checkinAmount <= 0) {
         alert("No items to check in or all items already checked in.");
@@ -233,9 +250,15 @@ function ProjectManagementUI() {
                   <div className="hw-actions">
                     <input
                       type="number"
-                      value={userAmounts[hwSet.name]}
+                      value={
+                        userAmounts[`${project.projectID}-${hwSet.name}`] || 0
+                      }
                       onChange={(e) =>
-                        handleUserInput(hwSet.name, Number(e.target.value))
+                        handleUserInput(
+                          hwSet.name,
+                          project.projectID,
+                          Number(e.target.value)
+                        )
                       }
                     />
                     <div className="checkout-checkin-group">
