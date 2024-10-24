@@ -3,57 +3,102 @@ import { useNavigate, useLocation } from "react-router-dom";
 import "./App.css";
 
 function ProjectManagementUI() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const username = location.state?.username || "User";
-  // default values for hwSet1 and hwSet2
-  const [hwSets, setHwSets] = useState({
-    HWSet1: { capacity: 0, availability: 0 },
-    HWSet2: { capacity: 0, availability: 0 },
+  const [projects, setProjects] = useState([]);
+  const [projectData, setProjectData] = useState({
+    name: "",
+    description: "",
+    projectID: "",
   });
-
-  // user values for checkout for hwSet1 and hwSet2
-  const [userAmounts, setUserAmounts] = useState({
-    HWSet1: 0,
-    HWSet2: 0,
-  });
-
+  const [hwSets, setHwSets] = useState({});
+  const [userAmounts, setUserAmounts] = useState({});
+  // Fetch all projects with hardware sets when component loads
   useEffect(() => {
-    fetchHardWareData();
+    fetchProjectsAndHardware();
   }, []);
 
-  // fetch hardware data from app.py
-  const fetchHardWareData = async () => {
+  const fetchProjectsAndHardware = async () => {
     try {
-      const response = await fetch("/hardware");
-      // data retrieved from app.py
+      const response = await fetch("/projects-hardware");
       const data = await response.json();
-      console.log(data);
-      const newHwSets = {};
-      data.forEach((hw) => {
-        newHwSets[hw.name] = {
-          capacity: hw.capacity,
-          availability: hw.availability,
-        };
+      setProjects(data);
+
+      // Initialize hwSets and userAmounts based on fetched data
+      const hwSetInitialState = {};
+      const userAmountInitialState = {};
+      data.forEach((project) => {
+        project.hardwareSets.forEach((hwSet) => {
+          hwSetInitialState[hwSet.name] = {
+            capacity: hwSet.capacity,
+            availability: hwSet.availability,
+          };
+          userAmountInitialState[hwSet.name] = 0; // Initialize all inputs to 0
+        });
       });
-      setHwSets(newHwSets);
+      setHwSets(hwSetInitialState);
+      setUserAmounts(userAmountInitialState);
     } catch (error) {
-      console.error("Error fetching hardware due to: ", error);
+      console.error("Error fetching projects and hardware:", error);
     }
   };
 
-  // handle user amount input
+  // Handle input changes for the project creation form
+  const handleProjectInput = (e) => {
+    const { name, value } = e.target;
+    setProjectData((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }));
+  };
+
+  // Create a new project and display it with two initialized HW sets
+  const createProject = async () => {
+    try {
+      const response = await fetch("/create-project", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(projectData),
+      });
+
+      if (response.ok) {
+        const newProject = await response.json();
+        // Add the new project to the list with initialized hardware sets
+        setProjects((prevProjects) => [
+          ...prevProjects,
+          {
+            ...newProject.project,
+            hardwareSets: [
+              { name: "HWSet1", capacity: 200, availability: 200 },
+              { name: "HWSet2", capacity: 200, availability: 200 },
+            ],
+          },
+        ]);
+        setProjectData({ name: "", description: "", projectID: "" }); // Clear the form
+      } else {
+        const errorData = await response.json();
+        alert(`Error: ${errorData.message}`);
+      }
+    } catch (error) {
+      console.error("Error creating project:", error);
+    }
+  };
+  const navigate = useNavigate();
+  const location = useLocation();
+  const username = location.state?.username || "User";
+
   const handleUserInput = (hwSet, amount) => {
-    const { capacity, availability } = hwSets[hwSet];
+    const hardwareSet = hwSets[hwSet] || { capacity: 0, availability: 0 }; // Fallback to default values if undefined
+    const { capacity, availability } = hardwareSet;
     const maxAllowed = Math.max(availability, capacity - availability);
+
     setUserAmounts((prev) => ({
       ...prev,
       [hwSet]: Math.max(0, Math.min(amount, maxAllowed)),
     }));
   };
 
-  // handle user checkout
-  const handleCheckout = async (hwSet) => {
+  const handleCheckout = async (hwSet, projectID) => {
     try {
       const { availability } = hwSets[hwSet];
       const checkoutAmount = Math.min(userAmounts[hwSet], availability);
@@ -71,14 +116,14 @@ function ProjectManagementUI() {
         body: JSON.stringify({
           hw_set: hwSet,
           qty: checkoutAmount,
-          projectID: 0,
+          projectID,
         }),
       });
       const data = await response.json();
       console.log(data.message);
 
       // Refresh hardware data and user amounts after checkout
-      await fetchHardWareData();
+      await fetchProjectsAndHardware();
       setUserAmounts((prev) => ({ ...prev, [hwSet]: 0 }));
 
       alert(`Successfully checked out ${checkoutAmount} items.`);
@@ -88,7 +133,7 @@ function ProjectManagementUI() {
     }
   };
 
-  const handleCheckin = async (hwSet) => {
+  const handleCheckin = async (hwSet, projectID) => {
     try {
       const { capacity, availability } = hwSets[hwSet];
       const maxCheckin = capacity - availability;
@@ -107,14 +152,14 @@ function ProjectManagementUI() {
         body: JSON.stringify({
           hw_set: hwSet,
           qty: checkinAmount,
-          projectID: 0,
+          projectID,
         }),
       });
       const data = await response.json();
       console.log(data.message);
 
       // Refresh hardware data and user amounts after checkin
-      await fetchHardWareData();
+      await fetchProjectsAndHardware();
       setUserAmounts((prev) => ({ ...prev, [hwSet]: 0 }));
 
       alert(`Successfully checked in ${checkinAmount} items.`);
@@ -123,44 +168,8 @@ function ProjectManagementUI() {
       alert("An error occurred during check-in. Please try again.");
     }
   };
-
   const handleLogout = () => {
     navigate("/login");
-  };
-  const [projectData, setProjectData] = useState({
-    name: "",
-    description: "",
-    projectID: "",
-  });
-
-  const handleProjectInput = (e) => {
-    const { name, value } = e.target;
-    setProjectData((prevData) => ({
-      ...prevData,
-      [name]: value,
-    }));
-  };
-
-  const createProject = async () => {
-    try {
-      const response = await fetch("/create-project", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(projectData),
-      });
-
-      const data = await response.json();
-      if (response.ok) {
-        alert("Project created successfully!");
-      } else {
-        alert(`Error: ${data.message}`);
-      }
-    } catch (error) {
-      console.error("Error creating project:", error);
-      alert("An error occurred while creating the project.");
-    }
   };
 
   return (
@@ -204,47 +213,51 @@ function ProjectManagementUI() {
         <button onClick={createProject}>Create Project</button>
       </div>
 
-      <div className="hw-sets">
-        {Object.entries(hwSets).map(([hwSet, { capacity, availability }]) => (
-          <div key={hwSet} className="hw-set-card">
-            <h3>{hwSet}</h3>
-            <p>Capacity: {capacity}</p>
-            <p>Available: {availability}</p>
-            <input
-              type="number"
-              value={userAmounts[hwSet]}
-              onChange={(e) => handleUserInput(hwSet, Number(e.target.value))}
-              className="amount-input"
-              min="0"
-              max={Math.max(availability, capacity - availability)}
-            />
-            <div className="button-group">
-              <button
-                onClick={() => handleUserInput(hwSet, userAmounts[hwSet] + 1)}
-              >
-                +
-              </button>
-              <button
-                onClick={() => handleUserInput(hwSet, userAmounts[hwSet] - 1)}
-              >
-                -
-              </button>
+      <div className="container">
+        <h2>Projects</h2>
+        {projects.map((project) => (
+          <div key={project.projectID} className="project-card">
+            <div className="project-header">
+              <h3>
+                Project Name: {project.name} (ID: {project.projectID})
+              </h3>
+              <p>Project Description: {project.description}</p>
             </div>
-            <div className="checkout-checkin-group">
-              <button
-                className="checkout-button"
-                onClick={() => handleCheckout(hwSet)}
-                disabled={userAmounts[hwSet] === 0}
-              >
-                Checkout
-              </button>
-              <button
-                className="checkin-button"
-                onClick={() => handleCheckin(hwSet)}
-                disabled={userAmounts[hwSet] === 0}
-              >
-                Check In
-              </button>
+            <div className="hardware-section">
+              {project.hardwareSets.map((hwSet) => (
+                <div key={hwSet.name} className="hw-set">
+                  <p>
+                    {hwSet.name}: Available {hwSet.availability}/
+                    {hwSet.capacity}
+                  </p>
+                  <div className="hw-actions">
+                    <input
+                      type="number"
+                      value={userAmounts[hwSet.name]}
+                      onChange={(e) =>
+                        handleUserInput(hwSet.name, Number(e.target.value))
+                      }
+                      placeholder="Enter qty"
+                    />
+                    <button
+                      className="checkin-button"
+                      onClick={() =>
+                        handleCheckin(hwSet.name, project.projectID)
+                      }
+                    >
+                      Check In
+                    </button>
+                    <button
+                      className="checkout-button"
+                      onClick={() =>
+                        handleCheckout(hwSet.name, project.projectID)
+                      }
+                    >
+                      Check Out
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         ))}

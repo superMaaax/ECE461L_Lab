@@ -133,12 +133,12 @@ def checkin():
 @app.route("/create-project", methods=["POST"])
 def create_project():
     data = request.json
-    name = data.get("name")
-    description = data.get("description")
+    project_name = data.get("name")
+    project_description = data.get("description")
     project_id = data.get("projectID")
 
-    # Basic validation
-    if not name or not project_id:
+    # Validation
+    if not project_name or not project_id:
         return jsonify({"message": "Name and Project ID are required"}), 400
 
     # Check if the project already exists
@@ -146,11 +146,53 @@ def create_project():
     if existing_project:
         return jsonify({"message": "Project with this ID already exists"}), 400
 
-    # Insert new project into MongoDB
-    new_project = {"name": name, "description": description, "projectID": project_id}
-    projects_collection.insert_one(new_project)
+    new_project = {
+        "projectID": project_id,
+        "name": project_name,
+        "description": project_description,
+        "users": [],
+    }
+    inserted_project = projects_collection.insert_one(new_project)
 
-    return jsonify({"message": "Project created successfully"}), 201
+    new_project["_id"] = str(inserted_project.inserted_id)
+
+    # Initialize two hardware sets for the project
+    hardware_collection.insert_many(
+        [
+            {
+                "name": "HWSet1",
+                "capacity": 200,
+                "availability": 200,
+                "projectID": project_id,
+            },
+            {
+                "name": "HWSet2",
+                "capacity": 200,
+                "availability": 200,
+                "projectID": project_id,
+            },
+        ]
+    )
+
+    return (
+        jsonify({"message": "Project created successfully", "project": new_project}),
+        201,
+    )
+
+
+# Route to fetch all projects and their associated hardware sets
+@app.route("/projects-hardware", methods=["GET"])
+def get_projects_and_hardware():
+    projects = list(projects_collection.find({}, {"_id": 0}))  # Fetch all projects
+    for project in projects:
+        # Find hardware sets for each project using the projectID
+        project_hardware = list(
+            hardware_collection.find({"projectID": project["projectID"]}, {"_id": 0})
+        )
+        project["hardwareSets"] = (
+            project_hardware  # Attach hardware sets to the project object
+        )
+    return jsonify(projects)
 
 
 @app.errorhandler(500)
