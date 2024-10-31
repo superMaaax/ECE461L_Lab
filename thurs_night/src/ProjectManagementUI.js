@@ -129,23 +129,13 @@ const fetchUserProjects = async (username) => {
   };
 
   const handleCheckout = async (hwSet, projectID) => {
+    const checkoutAmount = userAmounts[`${projectID}-${hwSet}`] || 0;
+    if (checkoutAmount <= 0) {
+      alert("Please enter a valid quantity to checkout.");
+      return;
+    }
+
     try {
-      const project = projects.find((proj) => proj.projectID === projectID);
-      const hardwareSet = project.hardwareSets.find(
-        (set) => set.name === hwSet
-      );
-      const { availability } = hardwareSet; 
-
-      const checkoutAmount = Math.min(
-        userAmounts[`${projectID}-${hwSet}`],
-        availability
-      );
-      
-      if (checkoutAmount <= 0) {
-        alert("No items available for checkout.");
-        return;
-      }
-
       const response = await fetch("/checkout", {
         method: "POST",
         headers: {
@@ -155,41 +145,31 @@ const fetchUserProjects = async (username) => {
           hw_set: hwSet,
           qty: checkoutAmount,
           projectID,
+          userID: username,  // Send userID to identify the user
         }),
       });
+
       const data = await response.json();
-      console.log(data.message);
-
-      // Refresh hardware data and user amounts after checkout
-      await fetchProjectsAndHardware();
-      setUserAmounts((prev) => ({ ...prev, [hwSet]: 0 }));
-
-      alert(`Successfully checked out ${checkoutAmount} items.`);
+      if (response.ok) {
+        fetchProjectsAndHardware();  // Refresh data
+        alert(data.message);
+      } else {
+        alert(data.message);
+      }
     } catch (error) {
-      console.error("Error checking out hardware:", error);
-      alert("An error occurred during checkout. Please try again.");
+      console.error("Error during checkout:", error);
+      alert("An error occurred during checkout.");
     }
   };
 
   const handleCheckin = async (hwSet, projectID) => {
+    const checkinAmount = userAmounts[`${projectID}-${hwSet}`] || 0;
+    if (checkinAmount <= 0) {
+      alert("Please enter a valid quantity to checkin.");
+      return;
+    }
+
     try {
-      const project = projects.find((proj) => proj.projectID === projectID);
-      const hardwareSet = project.hardwareSets.find(
-        (set) => set.name === hwSet
-      );
-      const { capacity, availability } = hardwareSet;
-
-      const maxCheckin = capacity - availability;
-      const checkinAmount = Math.min(
-        userAmounts[`${projectID}-${hwSet}`],
-        maxCheckin
-      );
-
-      if (checkinAmount <= 0) {
-        alert("No items to check in or all items already checked in.");
-        return;
-      }
-
       const response = await fetch("/checkin", {
         method: "POST",
         headers: {
@@ -199,21 +179,23 @@ const fetchUserProjects = async (username) => {
           hw_set: hwSet,
           qty: checkinAmount,
           projectID,
+          userID: username,  // Send userID to verify the user’s ownership
         }),
       });
+
       const data = await response.json();
-      console.log(data.message);
-
-      // Refresh hardware data and user amounts after checkin
-      await fetchProjectsAndHardware();
-      setUserAmounts((prev) => ({ ...prev, [hwSet]: 0 }));
-
-      alert(`Successfully checked in ${checkinAmount} items.`);
+      if (response.ok) {
+        fetchProjectsAndHardware();  // Refresh data
+        alert(data.message);
+      } else {
+        alert(data.message);
+      }
     } catch (error) {
       console.error("Error during checkin:", error);
-      alert("An error occurred during check-in. Please try again.");
+      alert("An error occurred during checkin.");
     }
   };
+
   const handleLogout = () => {
     navigate("/login");
   };

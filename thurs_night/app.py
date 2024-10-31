@@ -31,6 +31,7 @@ try:
     users_collection = db["users"]
     hardware_collection = db["hardware"]
     projects_collection = db["projects"]
+    checkouts_collection = db["checkouts"]  # New collection to track checkouts
     initialize_hardware()  # Call to populate initial data
 except Exception as e:
     print("Failed to connect to MongoDB:", e)
@@ -100,25 +101,33 @@ def login():
         return jsonify({"message": "Invalid credentials"}), 401
 
 
-# Hardware Checkout Endpoint with Availability Update
 @app.route("/checkout", methods=["POST"])
 def checkout():
     data = request.json
     hw_set_name = data.get("hw_set")
     qty = data.get("qty")
     project_id = data.get("projectID")
+    user_id = data.get("userID")
 
-    if hw_set_name and qty and project_id:
+    if hw_set_name and qty and project_id and user_id:
         # Find the hardware item for the specific project
         hardware_item = hardware_collection.find_one({"name": hw_set_name, "projectID": project_id})
 
         if hardware_item and hardware_item["availability"] >= qty:
-            # Update the availability
+            # Reduce availability and add a record in the checkouts collection
             new_availability = hardware_item["availability"] - qty
             hardware_collection.update_one(
                 {"name": hw_set_name, "projectID": project_id},
                 {"$set": {"availability": new_availability}}
             )
+
+            # Record the checkout in the checkouts collection
+            checkouts_collection.update_one(
+                {"userID": user_id, "projectID": project_id, "hw_set": hw_set_name},
+                {"$inc": {"qty": qty}},  # Increase the quantity checked out by this user for this hw_set
+                upsert=True
+            )
+
             return jsonify({"message": f"{qty} units checked out from {hw_set_name}."}), 200
         else:
             return jsonify({"message": "Insufficient availability!"}), 400
@@ -132,20 +141,45 @@ def checkin():
     hw_set_name = data.get("hw_set")
     qty = data.get("qty")
     project_id = data.get("projectID")
+    user_id = data.get("userID")
 
-    if hw_set_name and qty and project_id:
-        hardware_item = hardware_collection.find_one({"name": hw_set_name, "projectID": project_id})
+    if hw_set_name and qty and project_id and user_id:
+        # Find the checkout record for the specific user, project, and hardware set
+        checkout_record = checkouts_collection.find_one({
+            "userID": user_id,
+            "projectID": project_id,
+            "hw_set": hw_set_name
+        })
 
-        if hardware_item:
-            # Update the availability
+        if checkout_record and checkout_record["qty"] >= qty:
+            # Increase availability in the hardware collection
+            hardware_item = hardware_collection.find_one({"name": hw_set_name, "projectID": project_id})
             new_availability = hardware_item["availability"] + qty
             hardware_collection.update_one(
                 {"name": hw_set_name, "projectID": project_id},
                 {"$set": {"availability": new_availability}}
             )
+
+            # Update the quantity in the checkouts collection
+            remaining_qty = checkout_record["qty"] - qty
+            if remaining_qty > 0:
+                checkouts_collection.update_one(
+                    {"userID": user_id, "projectID": project_id, "hw_set": hw_set_name},
+                    {"$set": {"qty": remaining_qty}}
+                )
+            else:
+                # Remove the record if fully checked in
+                checkouts_collection.delete_one(
+                    {"userID": user_id, "projectID": project_id, "hw_set": hw_set_name}
+                )
+
             return jsonify({"message": "Checked in successfully!"}), 200
+        else:
+            return jsonify({"message": "You don't have enough items checked out to check in this quantity."}), 400
 
     return jsonify({"message": "Invalid request!"}), 400
+
+
 
 
 @app.route("/create-project", methods=["POST"])
