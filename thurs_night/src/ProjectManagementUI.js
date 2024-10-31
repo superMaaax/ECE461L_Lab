@@ -208,11 +208,11 @@ const fetchUserProjects = async (username) => {
         },
         body: JSON.stringify({ projectID: joinProjectID, userID: username }),
       });
-      
+
       const data = await response.json();
       if (response.ok) {
         alert(data.message);
-        fetchUserProjects(username); // Refresh to show newly joined projects
+        await fetchProjectsAndHardware(); // Refresh projects list
         setJoinProjectID(""); // Clear the input after successful join
       } else {
         alert(data.message || 'Failed to join project');
@@ -222,6 +222,7 @@ const fetchUserProjects = async (username) => {
       alert('An error occurred. Please try again.');
     }
   };
+
   
   
 
