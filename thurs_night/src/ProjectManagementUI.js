@@ -12,7 +12,7 @@ function ProjectManagementUI() {
   const [hwSets, setHwSets] = useState({});
   const [userAmounts, setUserAmounts] = useState({});
   const [joinProjectID, setJoinProjectID] = useState("");
-
+  
   // Fetch all projects with hardware sets when component loads
   useEffect(() => {
     fetchProjectsAndHardware();
@@ -22,12 +22,18 @@ function ProjectManagementUI() {
     try {
       const response = await fetch("/projects-hardware");
       const data = await response.json();
-      setProjects(data);
 
-      // Initialize hwSets and userAmounts based on fetched data
+      // Filter the projects to only include those the user has joined
+      const userProjects = data.filter((project) =>
+        project.members && project.members.includes(username)
+      );
+
+      setProjects(userProjects);
+
+      // Initialize hwSets and userAmounts based on filtered data
       const hwSetInitialState = {};
       const userAmountInitialState = {};
-      data.forEach((project) => {
+      userProjects.forEach((project) => {
         project.hardwareSets.forEach((hwSet) => {
           hwSetInitialState[hwSet.name] = {
             capacity: hwSet.capacity,
@@ -41,7 +47,8 @@ function ProjectManagementUI() {
     } catch (error) {
       console.error("Error fetching projects and hardware:", error);
     }
-  };
+};
+
 
   // Handle input changes for the project creation form
   const handleProjectInput = (e) => {
@@ -51,6 +58,26 @@ function ProjectManagementUI() {
       [name]: value,
     }));
   };
+const fetchUserProjects = async (username) => {
+  try {
+    const response = await fetch('/user-projects', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ userID: username }),
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      setProjects(data); // Set only the user's joined projects
+    } else {
+      console.error("Failed to fetch user's joined projects");
+    }
+  } catch (error) {
+    console.error("Error fetching user projects:", error);
+  }
+};
 
   // Create a new project and display it with two initialized HW sets
   const createProject = async () => {
@@ -191,27 +218,30 @@ function ProjectManagementUI() {
     navigate("/login");
   };
   const joinProject = async () => {
-  try {
-    const response = await fetch('/join-project', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ projectID: joinProjectID, userID: username }),
-    });
-    
-    const data = await response.json();
-    if (response.ok) {
-      alert(data.message);
-      fetchProjectsAndHardware(); // Refresh projects to reflect the joined project
-    } else {
-      alert(data.message || 'Failed to join project');
+    try {
+      const response = await fetch('/join-project', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ projectID: joinProjectID, userID: username }),
+      });
+      
+      const data = await response.json();
+      if (response.ok) {
+        alert(data.message);
+        fetchUserProjects(username); // Refresh to show newly joined projects
+        setJoinProjectID(""); // Clear the input after successful join
+      } else {
+        alert(data.message || 'Failed to join project');
+      }
+    } catch (error) {
+      console.error('Error joining project:', error);
+      alert('An error occurred. Please try again.');
     }
-  } catch (error) {
-    console.error('Error joining project:', error);
-    alert('An error occurred. Please try again.');
-  }
-};
+  };
+  
+  
 
 
   return (
@@ -222,7 +252,7 @@ function ProjectManagementUI() {
           LOG OUT
         </button>
       </div>
-      
+
       <div className="join-project-container">
         <h3>Join Existing Project</h3>
         <div>

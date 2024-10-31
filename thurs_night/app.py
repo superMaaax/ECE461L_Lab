@@ -22,7 +22,7 @@ def initialize_hardware():
 
 
 # Initialize MongoDB
-mongo_uri = os.environ.get("MONGO_URI")
+mongo_uri = os.environ.get("MONGO_URI", "mongodb+srv://swadeepto:swelabthursnight@swe-lab-haas.gld42.mongodb.net/?retryWrites=true&w=majority&appName=swe-lab-haas")
 is_heroku = False
 
 try:
@@ -50,6 +50,19 @@ def serve(path):
     else:
         return send_from_directory(app.static_folder, "index.html")
 
+# Endpoint to retrieve only the projects created or joined by the user
+@app.route('/user-projects', methods=['POST'])
+def get_user_projects():
+    data = request.json
+    user_id = data.get("userID")
+
+    # Fetch projects where the user is the creator or a member
+    user_projects = list(projects_collection.find(
+        {"$or": [{"creator": user_id}, {"members": user_id}]},
+        {"_id": 0}  # Exclude MongoDB ID from response
+    ))
+
+    return jsonify(user_projects), 200
 
 # Hardware Status Endpoint
 @app.route("/hardware", methods=["GET"])
@@ -87,23 +100,26 @@ def login():
         return jsonify({"message": "Invalid credentials"}), 401
 
 
-# Hardware Checkout Endpoint
+# Hardware Checkout Endpoint with Availability Update
 @app.route("/checkout", methods=["POST"])
 def checkout():
     data = request.json
     hw_set_name = data.get("hw_set")
     qty = data.get("qty")
+    project_id = data.get("projectID")
 
-    if hw_set_name and qty:
-        hardware_item = hardware_collection.find_one({"name": hw_set_name})
+    if hw_set_name and qty and project_id:
+        # Find the hardware item for the specific project
+        hardware_item = hardware_collection.find_one({"name": hw_set_name, "projectID": project_id})
 
         if hardware_item and hardware_item["availability"] >= qty:
             # Update the availability
             new_availability = hardware_item["availability"] - qty
             hardware_collection.update_one(
-                {"name": hw_set_name}, {"$set": {"availability": new_availability}}
+                {"name": hw_set_name, "projectID": project_id},
+                {"$set": {"availability": new_availability}}
             )
-            return jsonify({"message": "Checked out successfully!"}), 200
+            return jsonify({"message": f"{qty} units checked out from {hw_set_name}."}), 200
         else:
             return jsonify({"message": "Insufficient availability!"}), 400
 
@@ -115,15 +131,17 @@ def checkin():
     data = request.json
     hw_set_name = data.get("hw_set")
     qty = data.get("qty")
+    project_id = data.get("projectID")
 
-    if hw_set_name and qty:
-        hardware_item = hardware_collection.find_one({"name": hw_set_name})
+    if hw_set_name and qty and project_id:
+        hardware_item = hardware_collection.find_one({"name": hw_set_name, "projectID": project_id})
 
         if hardware_item:
             # Update the availability
             new_availability = hardware_item["availability"] + qty
             hardware_collection.update_one(
-                {"name": hw_set_name}, {"$set": {"availability": new_availability}}
+                {"name": hw_set_name, "projectID": project_id},
+                {"$set": {"availability": new_availability}}
             )
             return jsonify({"message": "Checked in successfully!"}), 200
 
@@ -136,6 +154,7 @@ def create_project():
     project_name = data.get("name")
     project_description = data.get("description")
     project_id = data.get("projectID")
+    user_id = data.get("userID")  # Assuming creator's ID is sent with the request
 
     # Validation
     if not project_name or not project_id:
@@ -150,7 +169,8 @@ def create_project():
         "projectID": project_id,
         "name": project_name,
         "description": project_description,
-        "users": [],
+        "creator": user_id,
+        "members": [user_id],  # Add creator as the first member
     }
     inserted_project = projects_collection.insert_one(new_project)
 
@@ -193,6 +213,7 @@ def get_projects_and_hardware():
             project_hardware  # Attach hardware sets to the project object
         )
     return jsonify(projects)
+
 @app.route('/join-project', methods=['POST'])
 def join_project():
     data = request.get_json()
