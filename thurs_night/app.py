@@ -193,7 +193,25 @@ def get_projects_and_hardware():
             project_hardware  # Attach hardware sets to the project object
         )
     return jsonify(projects)
+@app.route('/join-project', methods=['POST'])
+def join_project():
+    data = request.get_json()
+    project_id = data.get('projectID')
+    user_id = data.get('userID')
+    
+    # Find the project by projectID
+    project = projects_collection.find_one({"projectID": project_id})
+    
+    if not project:
+        return jsonify({"message": "Project not found"}), 404
 
+    # Add the user to the project's members list
+    projects_collection.update_one(
+        {"projectID": project_id},
+        {"$addToSet": {"members": user_id}}
+    )
+
+    return jsonify({"message": "Successfully joined project"}), 200
 
 @app.errorhandler(500)
 def server_error(e):

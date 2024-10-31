@@ -271,3 +271,16 @@
 .checkin-button:hover {
   background-color: #10b981;
 }
+
+.join-project-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  max-width: 400px;
+  background-color: #f9f9f9;
+  margin: 20px auto;
+}

@@ -11,6 +11,8 @@ function ProjectManagementUI() {
   });
   const [hwSets, setHwSets] = useState({});
   const [userAmounts, setUserAmounts] = useState({});
+  const [joinProjectID, setJoinProjectID] = useState("");
+
   // Fetch all projects with hardware sets when component loads
   useEffect(() => {
     fetchProjectsAndHardware();
@@ -188,6 +190,29 @@ function ProjectManagementUI() {
   const handleLogout = () => {
     navigate("/login");
   };
+  const joinProject = async () => {
+  try {
+    const response = await fetch('/join-project', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ projectID: joinProjectID, userID: username }),
+    });
+    
+    const data = await response.json();
+    if (response.ok) {
+      alert(data.message);
+      fetchProjectsAndHardware(); // Refresh projects to reflect the joined project
+    } else {
+      alert(data.message || 'Failed to join project');
+    }
+  } catch (error) {
+    console.error('Error joining project:', error);
+    alert('An error occurred. Please try again.');
+  }
+};
+
 
   return (
     <div className="container">
@@ -197,6 +222,20 @@ function ProjectManagementUI() {
           LOG OUT
         </button>
       </div>
+      
+      <div className="join-project-container">
+        <h3>Join Existing Project</h3>
+        <div>
+          <input
+            type="text"
+            placeholder="Enter Project ID"
+            value={joinProjectID}
+            onChange={(e) => setJoinProjectID(e.target.value)}
+          />
+        </div>
+        <button onClick={joinProject}>Join Project</button>
+      </div>
+
 
       <div className="project-form-container">
         <h3>Create New Project</h3>
