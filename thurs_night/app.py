@@ -8,6 +8,7 @@ import logging
 
 app = Flask(__name__, static_folder="build", static_url_path="")
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 CORS(app)
 
 
@@ -22,7 +23,8 @@ def initialize_hardware():
 
 
 # Initialize MongoDB
-mongo_uri = os.environ.get("MONGO_URI", "mongodb+srv://swadeepto:swelabthursnight@swe-lab-haas.gld42.mongodb.net/?retryWrites=true&w=majority&appName=swe-lab-haas")
+mongo_uri = os.environ.get("MONGO_URI",
+                           "mongodb+srv://swadeepto:swelabthursnight@swe-lab-haas.gld42.mongodb.net/?retryWrites=true&w=majority&appName=swe-lab-haas")
 is_heroku = False
 
 try:
@@ -43,13 +45,31 @@ hardware_set_1.initialize_capacity(200)
 hardware_set_2.initialize_capacity(200)
 
 
-@app.route("/", defaults={"path": ""})
-@app.route("/<path:path>")
-def serve(path):
-    if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
-        return send_from_directory(app.static_folder, path)
-    else:
-        return send_from_directory(app.static_folder, "index.html")
+@app.route("/")  # Root path
+@app.route("/login")  # Login path
+@app.route("/register")  # Register path
+@app.route("/dashboard")  # Dashboard path
+@app.route("/<path:path>")  # Catch all other paths
+def serve(path=""):
+    logger.debug(f"Incoming request path: {path}")
+
+    # For all non-API routes, return the React app
+    return send_from_directory(app.static_folder, 'index.html')
+
+
+# Handle static files separately
+@app.route("/static/<path:path>")
+def serve_static(path):
+    return send_from_directory(os.path.join(app.static_folder, "static"), path)
+
+
+# Add explicit route for manifest.json and other root level files
+@app.route("/<path:filename>")
+def serve_root_files(filename):
+    if os.path.exists(os.path.join(app.static_folder, filename)):
+        return send_from_directory(app.static_folder, filename)
+    return send_from_directory(app.static_folder, 'index.html')
+
 
 # Endpoint to retrieve only the projects created or joined by the user
 @app.route('/user-projects', methods=['POST'])
@@ -60,10 +80,11 @@ def get_user_projects():
     # Fetch projects where the user is the creator or a member
     user_projects = list(projects_collection.find(
         {"$or": [{"creator": user_id}, {"members": user_id}]},
-        {"_id": 0}  # Exclude MongoDB ID from response
+        {"_id": 0}
     ))
 
     return jsonify(user_projects), 200
+
 
 # Hardware Status Endpoint
 @app.route("/hardware", methods=["GET"])
@@ -124,7 +145,7 @@ def checkout():
             # Record the checkout in the checkouts collection
             checkouts_collection.update_one(
                 {"userID": user_id, "projectID": project_id, "hw_set": hw_set_name},
-                {"$inc": {"qty": qty}},  # Increase the quantity checked out by this user for this hw_set
+                {"$inc": {"qty": qty}},
                 upsert=True
             )
 
@@ -136,23 +157,23 @@ def checkout():
 
 
 @app.route("/checkin", methods=["POST"])
+@app.route("/checkin", methods=["POST"])
 def checkin():
     data = request.json
     hw_set_name = data.get("hw_set")
     qty = data.get("qty")
     project_id = data.get("projectID")
-    user_id = data.get("userID")
 
-    if hw_set_name and qty and project_id and user_id:
-        # Find the checkout record for the specific user, project, and hardware set
-        checkout_record = checkouts_collection.find_one({
-            "userID": user_id,
-            "projectID": project_id,
-            "hw_set": hw_set_name
-        })
+    if hw_set_name and qty and project_id:
+        # Get the total checked-out quantity for the project and hardware set
+        total_checked_out = checkouts_collection.aggregate([
+            {"$match": {"projectID": project_id, "hw_set": hw_set_name}},
+            {"$group": {"_id": None, "total_qty": {"$sum": "$qty"}}}
+        ])
+        total_qty = total_checked_out.next().get("total_qty", 0)
 
-        if checkout_record and checkout_record["qty"] >= qty:
-            # Increase availability in the hardware collection
+        if total_qty >= qty:
+            # Update availability in hardware collection
             hardware_item = hardware_collection.find_one({"name": hw_set_name, "projectID": project_id})
             new_availability = hardware_item["availability"] + qty
             hardware_collection.update_one(
@@ -160,26 +181,29 @@ def checkin():
                 {"$set": {"availability": new_availability}}
             )
 
-            # Update the quantity in the checkouts collection
-            remaining_qty = checkout_record["qty"] - qty
-            if remaining_qty > 0:
-                checkouts_collection.update_one(
-                    {"userID": user_id, "projectID": project_id, "hw_set": hw_set_name},
-                    {"$set": {"qty": remaining_qty}}
+            # Update the checkout record across all users
+            while qty > 0:
+                checkout_record = checkouts_collection.find_one(
+                    {"projectID": project_id, "hw_set": hw_set_name, "qty": {"$gt": 0}}
                 )
-            else:
-                # Remove the record if fully checked in
-                checkouts_collection.delete_one(
-                    {"userID": user_id, "projectID": project_id, "hw_set": hw_set_name}
-                )
+                if checkout_record:
+                    deduct_qty = min(qty, checkout_record["qty"])
+                    qty -= deduct_qty
+                    remaining_qty = checkout_record["qty"] - deduct_qty
+
+                    if remaining_qty > 0:
+                        checkouts_collection.update_one(
+                            {"_id": checkout_record["_id"]},
+                            {"$set": {"qty": remaining_qty}}
+                        )
+                    else:
+                        checkouts_collection.delete_one({"_id": checkout_record["_id"]})
 
             return jsonify({"message": "Checked in successfully!"}), 200
         else:
-            return jsonify({"message": "You don't have enough items checked out to check in this quantity."}), 400
+            return jsonify({"message": "Not enough checked-out items to check in this quantity."}), 400
 
     return jsonify({"message": "Invalid request!"}), 400
-
-
 
 
 @app.route("/create-project", methods=["POST"])
@@ -248,15 +272,16 @@ def get_projects_and_hardware():
         )
     return jsonify(projects)
 
+
 @app.route('/join-project', methods=['POST'])
 def join_project():
     data = request.get_json()
     project_id = data.get('projectID')
     user_id = data.get('userID')
-    
+
     # Find the project by projectID
     project = projects_collection.find_one({"projectID": project_id})
-    
+
     if not project:
         return jsonify({"message": "Project not found"}), 404
 
@@ -267,6 +292,7 @@ def join_project():
     )
 
     return jsonify({"message": "Successfully joined project"}), 200
+
 
 @app.errorhandler(500)
 def server_error(e):

@@ -1,33 +1,35 @@
 import React, { useState } from 'react';
-import {Link, useNavigate} from 'react-router-dom';
+import {Link, useNavigate, useLocation} from 'react-router-dom';
 
 const Login = () => {
-  const [userid, setUserid] = useState('');
-  const [password, setPassword] = useState('');
-  const navigate = useNavigate();
+    const [userid, setUserid] = useState('');
+    const [password, setPassword] = useState('');
+    const navigate = useNavigate();
+    const location = useLocation();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const response = await fetch('/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ userid, password }),
-      });
-      const data = await response.json();
-      console.log(data);
-      if (response.ok) {
-        navigate('/dashboard', {state:{username: data.username}});
-      } else {
-        alert(data.message || 'Login failed. Please try again.');
-      }
-    } catch (error) {
-      console.error('Login error:', error);
-      alert('An error occurred. Please try again.');
-    }
-  };
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            const response = await fetch('/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ userid, password }),
+            });
+            const data = await response.json();
+
+            if (response.ok) {
+                sessionStorage.setItem('username', data.username);
+                navigate('/dashboard', { replace: true });
+            } else {
+                alert(data.message || 'Login failed. Please try again.');
+            }
+        } catch (error) {
+            console.error('Login error:', error);
+            alert('An error occurred. Please try again.');
+        }
+    };
 
   return (
       <div className="login-container">

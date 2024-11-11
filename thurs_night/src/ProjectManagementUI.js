@@ -114,7 +114,8 @@ const fetchUserProjects = async (username) => {
   };
   const navigate = useNavigate();
   const location = useLocation();
-  const username = location.state?.username || "User";
+  const username = sessionStorage.getItem('username') || "User";
+
 
   const handleUserInput = (hwSet, projectID, amount) => {
     const key = `${projectID}-${hwSet}`;
@@ -197,8 +198,10 @@ const fetchUserProjects = async (username) => {
   };
 
   const handleLogout = () => {
-    navigate("/login");
+    sessionStorage.removeItem('username');
+    navigate('/login', { replace: true });
   };
+
   const joinProject = async () => {
     try {
       const response = await fetch('/join-project', {
