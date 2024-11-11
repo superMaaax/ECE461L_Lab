@@ -53,17 +53,14 @@ hardware_set_2.initialize_capacity(200)
 def serve(path=""):
     logger.debug(f"Incoming request path: {path}")
 
-    # For all non-API routes, return the React app
     return send_from_directory(app.static_folder, 'index.html')
 
 
-# Handle static files separately
 @app.route("/static/<path:path>")
 def serve_static(path):
     return send_from_directory(os.path.join(app.static_folder, "static"), path)
 
 
-# Add explicit route for manifest.json and other root level files
 @app.route("/<path:filename>")
 def serve_root_files(filename):
     if os.path.exists(os.path.join(app.static_folder, filename)):
