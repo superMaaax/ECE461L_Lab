@@ -291,6 +291,27 @@ def join_project():
     return jsonify({"message": "Successfully joined project"}), 200
 
 
+@app.route('/leave-project', methods=['POST'])
+def leave_project():
+    data = request.get_json()
+    project_id = data.get('projectID')
+    user_id = data.get('userID')
+
+    # Find the project by projectID
+    project = projects_collection.find_one({"projectID": project_id})
+
+    if not project:
+        return jsonify({"message": "Project not found"}), 404
+
+    # Remove the user from the project's members list
+    projects_collection.update_one(
+        {"projectID": project_id},
+        {"$pull": {"members": user_id}}
+    )
+
+    return jsonify({"message": "Successfully left project"}), 200
+
+
 @app.errorhandler(500)
 def server_error(e):
     logging.error(f"500 error: {str(e)}")

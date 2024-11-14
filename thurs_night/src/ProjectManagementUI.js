@@ -244,6 +244,31 @@ function ProjectManagementUI() {
         }
     };
 
+    const leaveProject = async (projectID) => {
+        try {
+            const response = await fetch('/leave-project', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    projectID: projectID,
+                    userID: sessionStorage.getItem('username')
+                }),
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                await fetchProjectsAndHardware(); // Refresh the projects list
+            } else {
+                alert(data.message || 'Failed to leave project');
+            }
+        } catch (error) {
+            console.error('Error leaving project:', error);
+            alert('An error occurred. Please try again.');
+        }
+    };
+
 
     return (
         <div className="container">
@@ -306,9 +331,17 @@ function ProjectManagementUI() {
                     {projects.map((project) => (
                         <div key={project.projectID} className="hw-set-card">
                             <div className="project-header">
-                                <h3>
-                                    Project Name: {project.name} (ID: {project.projectID})
-                                </h3>
+                                <div className="project-title-row">
+                                    <h3>
+                                        Project Name: {project.name} (ID: {project.projectID})
+                                    </h3>
+                                    <button
+                                        className="leave-button"
+                                        onClick={() => leaveProject(project.projectID)}
+                                    >
+                                        Leave Project
+                                    </button>
+                                </div>
                                 <p>Project Description: {project.description}</p>
                             </div>
                             {project.hardwareSets.map((hwSet) => (

@@ -284,3 +284,23 @@
   background-color: #f9f9f9;
   margin: 20px auto;
 }
+
+.project-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.leave-button {
+    padding: 5px 10px;
+    background-color: #ff4444;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.leave-button:hover {
+    background-color: #cc0000;
+}
